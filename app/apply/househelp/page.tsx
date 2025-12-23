@@ -152,28 +152,13 @@ export default function HousehelpApplicationPage() {
     setIsLoading(true)
 
     try {
-      const formDataToSend = new FormData()
-      Object.entries(formData).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          formDataToSend.append(key, JSON.stringify(value))
-        } else if (value !== null && value !== undefined) {
-          formDataToSend.append(key, String(value))
-        }
-      })
-      formDataToSend.append("formType", "Househelp")
+      console.log("[v0] Househelp application submitted:", formData)
 
-      const response = await fetch("/api/applications", {
-        method: "POST",
-        body: formDataToSend,
-      })
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to submit application")
-      }
-
-      alert("Application submitted successfully! We will contact you soon.")
-      router.push("/apply")
+      // Redirect to success page
+      router.push("/apply/success")
     } catch (err) {
       console.error("[v0] Error submitting:", err)
       alert(err instanceof Error ? err.message : "Failed to submit application")

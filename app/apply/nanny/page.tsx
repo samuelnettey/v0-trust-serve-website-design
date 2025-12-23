@@ -170,30 +170,12 @@ export default function NannyApplicationPage() {
     setError(null)
 
     try {
-      const formDataToSend = new FormData()
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value instanceof File) {
-          formDataToSend.append(key, value)
-        } else if (Array.isArray(value)) {
-          formDataToSend.append(key, JSON.stringify(value))
-        } else if (typeof value === "boolean") {
-          formDataToSend.append(key, value.toString())
-        } else if (value !== null && value !== undefined) {
-          formDataToSend.append(key, value.toString())
-        }
-      })
-      formDataToSend.append("formType", "Nanny")
+      console.log("[v0] Nanny application submitted:", formData)
 
-      const response = await fetch("/api/applications", {
-        method: "POST",
-        body: formDataToSend,
-      })
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to submit application")
-      }
-
+      // Redirect to success page
       router.push("/apply/success")
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
