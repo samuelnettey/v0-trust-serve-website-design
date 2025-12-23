@@ -29,28 +29,22 @@ export default function NannyApplicationPage() {
     // Step 1: Role & Work Type
     role: "Nanny",
     workType: "",
-    preferredLocation: "",
-    preferredLocationOther: "",
     availability: "",
 
     // Step 2: Eligibility & Identity
     fullName: "",
     whatsappPhone: "",
-    age: "",
-    nationality: "",
-    currentCity: "",
-    currentArea: "",
-    ghanaCardNumber: "",
-    hasValidId: "",
+    ghanaCardFront: null as File | null,
+    ghanaCardBack: null as File | null,
 
     // Step 3: Childcare Experience
-    yearsExperience: "", // Changed from childcareExperience
+    yearsExperience: "",
     ageGroupsComfortable: [] as string[],
     childcareTasks: [] as string[],
-    cookingAbility: "", // Changed from canCookForChildren
+    cookingAbility: "",
     hasCprFirstAid: "",
     canCommunicateEnglish: "",
-    specialNeedsExperience: "", // New field
+    specialNeedsExperience: "",
 
     // Step 4: Trust & Safety
     emergencyContactName: "",
@@ -60,16 +54,14 @@ export default function NannyApplicationPage() {
     referenceAvailable: "",
     referenceName: "",
     referencePhone: "",
-    referenceRelationship: "", // Changed from referenceType
-    boundariesCheck: "",
-    integrityCheck: "",
+    referenceRelationship: "",
 
     // Step 5: Consent
     consentBackgroundCheck: false,
     consentMedicalScreening: false,
     consentEmploymentTerms: false,
-    consentToCheck: false, // Added for clarity in submission logic
-    consentToTerms: false, // Added for clarity in submission logic
+    consentToCheck: false,
+    consentToTerms: false,
   })
 
   const handleNext = () => {
@@ -79,10 +71,6 @@ export default function NannyApplicationPage() {
     // Validate current step
     if (currentStep === 1) {
       if (!formData.workType) errors.workType = "Please select your work type"
-      if (!formData.preferredLocation) errors.preferredLocation = "Please select your preferred location"
-      if (formData.preferredLocation === "Other" && !formData.preferredLocationOther) {
-        errors.preferredLocationOther = "Please specify your preferred location"
-      }
       if (!formData.availability) errors.availability = "Please select your availability"
 
       if (Object.keys(errors).length > 0) {
@@ -93,18 +81,8 @@ export default function NannyApplicationPage() {
     } else if (currentStep === 2) {
       if (!formData.fullName) errors.fullName = "Full name is required"
       if (!formData.whatsappPhone) errors.whatsappPhone = "WhatsApp phone number is required"
-      if (!formData.age) errors.age = "Age is required"
-      if (formData.age && Number.parseInt(formData.age) < 18) {
-        errors.age = "You must be at least 18 years old to apply"
-      }
-      if (!formData.nationality) errors.nationality = "Nationality is required"
-      if (!formData.currentCity) errors.currentCity = "Current city is required"
-      if (!formData.currentArea) errors.currentArea = "Current area/neighborhood is required"
-      if (!formData.ghanaCardNumber) errors.ghanaCardNumber = "Ghana Card number is required"
-      if (!formData.hasValidId) errors.hasValidId = "Please confirm if you have a valid ID"
-      if (formData.hasValidId === "No") {
-        errors.hasValidId = "Valid ID is required to proceed"
-      }
+      if (!formData.ghanaCardFront) errors.ghanaCardFront = "Front of Ghana Card is required"
+      if (!formData.ghanaCardBack) errors.ghanaCardBack = "Back of Ghana Card is required"
 
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors)
@@ -124,6 +102,7 @@ export default function NannyApplicationPage() {
       if (!formData.canCommunicateEnglish) {
         errors.canCommunicateEnglish = "Please indicate your English communication ability"
       }
+      if (!formData.specialNeedsExperience) errors.specialNeedsExperience = "Please indicate special needs experience"
 
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors)
@@ -142,8 +121,6 @@ export default function NannyApplicationPage() {
         if (!formData.referencePhone) errors.referencePhone = "Reference phone is required"
         if (!formData.referenceRelationship) errors.referenceRelationship = "Reference relationship is required"
       }
-      if (!formData.boundariesCheck) errors.boundariesCheck = "Please answer the boundaries question"
-      if (!formData.integrityCheck) errors.integrityCheck = "Please answer the integrity question"
 
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors)
@@ -191,14 +168,28 @@ export default function NannyApplicationPage() {
     setError(null)
 
     try {
+      // Prepare form data for submission, including files
+      const formDataToSend = new FormData()
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value instanceof File) {
+          formDataToSend.append(key, value)
+        } else if (Array.isArray(value)) {
+          // Assuming arrays are strings that need to be stringified
+          formDataToSend.append(key, JSON.stringify(value))
+        } else if (value !== null && value !== undefined) {
+          formDataToSend.append(key, String(value))
+        }
+      })
+      formDataToSend.append("formType", "Nanny")
+
       const response = await fetch("/api/applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, formType: "Nanny" }),
+        body: formDataToSend, // Send as FormData to handle files
       })
 
       if (!response.ok) {
-        throw new Error("Failed to submit application")
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to submit application")
       }
 
       router.push("/apply/success")
@@ -224,7 +215,6 @@ export default function NannyApplicationPage() {
     }
   }
 
-  // Render functions for each step to improve organization and handle input changes with error clearing
   const renderStep1 = () => (
     <div className="space-y-6">
       <div>
@@ -253,64 +243,6 @@ export default function NannyApplicationPage() {
         </select>
         {fieldErrors.workType && <p className="mt-1 text-sm text-red-600">{fieldErrors.workType}</p>}
       </div>
-
-      <div>
-        <label htmlFor="preferredLocation" className="block text-sm font-medium text-gray-700 mb-2">
-          Preferred Location <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="preferredLocation"
-          value={formData.preferredLocation}
-          onChange={(e) => {
-            setFormData({ ...formData, preferredLocation: e.target.value })
-            if (fieldErrors.preferredLocation) {
-              const newErrors = { ...fieldErrors }
-              delete newErrors.preferredLocation
-              setFieldErrors(newErrors)
-            }
-          }}
-          className={`w-full px-4 py-3 border rounded-md focus:ring-2 focus:ring-[#c8a951] focus:border-transparent ${
-            fieldErrors.preferredLocation ? "border-red-500" : "border-gray-300"
-          }`}
-        >
-          <option value="">Select location</option>
-          <option value="Greater Accra">Greater Accra</option>
-          <option value="Ashanti Region">Ashanti Region</option>
-          <option value="Eastern Region">Eastern Region</option>
-          <option value="Western Region">Western Region</option>
-          <option value="Central Region">Central Region</option>
-          <option value="Northern Region">Northern Region</option>
-          <option value="Other">Other</option>
-        </select>
-        {fieldErrors.preferredLocation && <p className="mt-1 text-sm text-red-600">{fieldErrors.preferredLocation}</p>}
-      </div>
-
-      {formData.preferredLocation === "Other" && (
-        <div>
-          <label htmlFor="preferredLocationOther" className="block text-sm font-medium text-gray-700 mb-2">
-            Please Specify Location <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="preferredLocationOther"
-            value={formData.preferredLocationOther}
-            onChange={(e) => {
-              setFormData({ ...formData, preferredLocationOther: e.target.value })
-              if (fieldErrors.preferredLocationOther) {
-                const newErrors = { ...fieldErrors }
-                delete newErrors.preferredLocationOther
-                setFieldErrors(newErrors)
-              }
-            }}
-            className={`w-full px-4 py-3 border rounded-md focus:ring-2 focus:ring-[#c8a951] focus:border-transparent ${
-              fieldErrors.preferredLocationOther ? "border-red-500" : "border-gray-300"
-            }`}
-          />
-          {fieldErrors.preferredLocationOther && (
-            <p className="mt-1 text-sm text-red-600">{fieldErrors.preferredLocationOther}</p>
-          )}
-        </div>
-      )}
 
       <div>
         <label htmlFor="availability" className="block text-sm font-medium text-gray-700 mb-2">
@@ -379,121 +311,40 @@ export default function NannyApplicationPage() {
         {fieldErrors.whatsappPhone && <p className="mt-1 text-sm text-red-600">{fieldErrors.whatsappPhone}</p>}
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="age" className="text-base">
-            Age <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="age"
-            type="number"
-            inputMode="numeric"
-            min="18"
-            value={formData.age}
-            onChange={(e) => {
-              setFormData({ ...formData, age: e.target.value })
-              if (fieldErrors.age) setFieldErrors((prev) => ({ ...prev, age: "" }))
-            }}
-            className={fieldErrors.age ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          {fieldErrors.age && <p className="mt-1 text-sm text-red-600">{fieldErrors.age}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="nationality" className="text-base">
-            Nationality <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="nationality"
-            value={formData.nationality}
-            onChange={(e) => {
-              setFormData({ ...formData, nationality: e.target.value })
-              if (fieldErrors.nationality) setFieldErrors((prev) => ({ ...prev, nationality: "" }))
-            }}
-            className={fieldErrors.nationality ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          {fieldErrors.nationality && <p className="mt-1 text-sm text-red-600">{fieldErrors.nationality}</p>}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="currentCity" className="text-base">
-            Current City <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="currentCity"
-            value={formData.currentCity}
-            onChange={(e) => {
-              setFormData({ ...formData, currentCity: e.target.value })
-              if (fieldErrors.currentCity) setFieldErrors((prev) => ({ ...prev, currentCity: "" }))
-            }}
-            className={fieldErrors.currentCity ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          {fieldErrors.currentCity && <p className="mt-1 text-sm text-red-600">{fieldErrors.currentCity}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="currentArea" className="text-base">
-            Current Area <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="currentArea"
-            placeholder="e.g., East Legon, Osu"
-            value={formData.currentArea}
-            onChange={(e) => {
-              setFormData({ ...formData, currentArea: e.target.value })
-              if (fieldErrors.currentArea) setFieldErrors((prev) => ({ ...prev, currentArea: "" }))
-            }}
-            className={fieldErrors.currentArea ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          {fieldErrors.currentArea && <p className="mt-1 text-sm text-red-600">{fieldErrors.currentArea}</p>}
-        </div>
-      </div>
-
       <div className="space-y-2">
-        <Label htmlFor="ghanaCardNumber" className="text-base">
-          Ghana Card Number <span className="text-red-500">*</span>
+        <Label htmlFor="ghanaCardFront" className="text-base">
+          Ghana Card - Front <span className="text-red-500">*</span>
         </Label>
         <Input
-          id="ghanaCardNumber"
-          inputMode="text"
-          placeholder="GHA-XXXXXXXXX-X"
-          value={formData.ghanaCardNumber}
+          id="ghanaCardFront"
+          type="file"
+          accept="image/*"
           onChange={(e) => {
-            setFormData({ ...formData, ghanaCardNumber: e.target.value })
-            if (fieldErrors.ghanaCardNumber) setFieldErrors((prev) => ({ ...prev, ghanaCardNumber: "" }))
+            const file = e.target.files?.[0] || null
+            setFormData({ ...formData, ghanaCardFront: file })
+            if (fieldErrors.ghanaCardFront) setFieldErrors((prev) => ({ ...prev, ghanaCardFront: "" }))
           }}
-          className={fieldErrors.ghanaCardNumber ? "border-red-500 focus-visible:ring-red-500" : ""}
+          className={fieldErrors.ghanaCardFront ? "border-red-500 focus-visible:ring-red-500" : ""}
         />
-        {fieldErrors.ghanaCardNumber && <p className="mt-1 text-sm text-red-600">{fieldErrors.ghanaCardNumber}</p>}
+        {fieldErrors.ghanaCardFront && <p className="mt-1 text-sm text-red-600">{fieldErrors.ghanaCardFront}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label className="text-base">
-          Has Valid ID? <span className="text-red-500">*</span>
+        <Label htmlFor="ghanaCardBack" className="text-base">
+          Ghana Card - Back <span className="text-red-500">*</span>
         </Label>
-        <RadioGroup
-          value={formData.hasValidId}
-          onValueChange={(value) => {
-            setFormData({ ...formData, hasValidId: value })
-            if (fieldErrors.hasValidId) setFieldErrors((prev) => ({ ...prev, hasValidId: "" }))
+        <Input
+          id="ghanaCardBack"
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0] || null
+            setFormData({ ...formData, ghanaCardBack: file })
+            if (fieldErrors.ghanaCardBack) setFieldErrors((prev) => ({ ...prev, ghanaCardBack: "" }))
           }}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="Yes" id="has-id-yes" />
-            <Label htmlFor="has-id-yes" className="font-normal">
-              Yes
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="No" id="has-id-no" />
-            <Label htmlFor="has-id-no" className="font-normal">
-              No
-            </Label>
-          </div>
-        </RadioGroup>
-        {fieldErrors.hasValidId && <p className="mt-1 text-sm text-red-600">{fieldErrors.hasValidId}</p>}
+          className={fieldErrors.ghanaCardBack ? "border-red-500 focus-visible:ring-red-500" : ""}
+        />
+        {fieldErrors.ghanaCardBack && <p className="mt-1 text-sm text-red-600">{fieldErrors.ghanaCardBack}</p>}
       </div>
     </div>
   )
@@ -662,13 +513,31 @@ export default function NannyApplicationPage() {
 
       <div className="space-y-2">
         <Label htmlFor="specialNeedsExperience" className="text-base">
-          Special Needs Experience
+          Special Needs Experience <span className="text-red-500">*</span>
         </Label>
-        <Input
-          id="specialNeedsExperience"
+        <RadioGroup
           value={formData.specialNeedsExperience}
-          onChange={(e) => setFormData({ ...formData, specialNeedsExperience: e.target.value })}
-        />
+          onValueChange={(value) => {
+            setFormData({ ...formData, specialNeedsExperience: value })
+            if (fieldErrors.specialNeedsExperience) setFieldErrors((prev) => ({ ...prev, specialNeedsExperience: "" }))
+          }}
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="Yes" id="special-needs-yes" />
+            <Label htmlFor="special-needs-yes" className="font-normal">
+              Yes
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="No" id="special-needs-no" />
+            <Label htmlFor="special-needs-no" className="font-normal">
+              No
+            </Label>
+          </div>
+        </RadioGroup>
+        {fieldErrors.specialNeedsExperience && (
+          <p className="mt-1 text-sm text-red-600">{fieldErrors.specialNeedsExperience}</p>
+        )}
       </div>
     </div>
   )
@@ -853,68 +722,6 @@ export default function NannyApplicationPage() {
             </>
           )}
         </div>
-      </div>
-
-      <div className="space-y-2 bg-soft-grey p-4 rounded-lg">
-        <Label className="text-base">
-          Household Boundaries Check <span className="text-red-500">*</span>
-        </Label>
-        <p className="text-sm text-charcoal mb-2">Is it acceptable to invite visitors without permission?</p>
-        <RadioGroup
-          value={formData.boundariesCheck}
-          onValueChange={(value) => {
-            setFormData({ ...formData, boundariesCheck: value })
-            if (fieldErrors.boundariesCheck) setFieldErrors((prev) => ({ ...prev, boundariesCheck: "" }))
-          }}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="Yes" id="boundaries-yes" />
-            <Label htmlFor="boundaries-yes" className="font-normal">
-              Yes
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="No" id="boundaries-no" />
-            <Label htmlFor="boundaries-no" className="font-normal">
-              No
-            </Label>
-          </div>
-        </RadioGroup>
-        {fieldErrors.boundariesCheck && <p className="mt-1 text-sm text-red-600">{fieldErrors.boundariesCheck}</p>}
-      </div>
-
-      <div className="space-y-2 bg-soft-grey p-4 rounded-lg">
-        <Label className="text-base">
-          Integrity Check <span className="text-red-500">*</span>
-        </Label>
-        <p className="text-sm text-charcoal mb-2">If you break an item, what do you do?</p>
-        <RadioGroup
-          value={formData.integrityCheck}
-          onValueChange={(value) => {
-            setFormData({ ...formData, integrityCheck: value })
-            if (fieldErrors.integrityCheck) setFieldErrors((prev) => ({ ...prev, integrityCheck: "" }))
-          }}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="Report immediately" id="integrity-report" />
-            <Label htmlFor="integrity-report" className="font-normal">
-              Report immediately
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="Hide it" id="integrity-hide" />
-            <Label htmlFor="integrity-hide" className="font-normal">
-              Hide it
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="Replace secretly" id="integrity-replace" />
-            <Label htmlFor="integrity-replace" className="font-normal">
-              Replace secretly
-            </Label>
-          </div>
-        </RadioGroup>
-        {fieldErrors.integrityCheck && <p className="mt-1 text-sm text-red-600">{fieldErrors.integrityCheck}</p>}
       </div>
     </div>
   )

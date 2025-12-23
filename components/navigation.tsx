@@ -20,11 +20,11 @@ export function Navigation() {
 
   const navLinks = [
     { href: "/", label: "Home" },
-    { href: "/trustserve-home", label: "Golden PrimeSteward Home" },
+    { href: "/trustserve-home", label: "Services" },
     { href: "/how-it-works", label: "How It Works" },
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
-    { href: "/apply", label: "Apply" }, // Added Apply link for candidates
+    { href: "/apply", label: "Apply" },
   ]
 
   return (
