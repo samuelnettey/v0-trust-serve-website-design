@@ -28,12 +28,12 @@ export default function NannyApplicationPage() {
   const [formData, setFormData] = useState({
     // Step 1: Role & Work Type
     role: "Nanny",
-    workType: "",
+    preferredWorkArrangement: "",
     availability: "",
 
     // Step 2: Eligibility & Identity
     fullName: "",
-    whatsappPhone: "",
+    whatsappNumber: "",
     ghanaCardFront: null as File | null,
     ghanaCardBack: null as File | null,
 
@@ -68,19 +68,22 @@ export default function NannyApplicationPage() {
     setAttemptedNext(true)
     const errors: Record<string, string> = {}
 
-    // Validate current step
     if (currentStep === 1) {
-      if (!formData.workType) errors.workType = "Please select your work type"
-      if (!formData.availability) errors.availability = "Please select your availability"
+      if (!formData.preferredWorkArrangement) {
+        errors.preferredWorkArrangement = "Please select a work arrangement"
+      }
+      if (!formData.availability) {
+        errors.availability = "Please select your availability"
+      }
 
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors)
-        setError("Please fill in all required fields before continuing")
+        setError("Please complete all required fields in this step")
         return
       }
     } else if (currentStep === 2) {
       if (!formData.fullName) errors.fullName = "Full name is required"
-      if (!formData.whatsappPhone) errors.whatsappPhone = "WhatsApp phone number is required"
+      if (!formData.whatsappNumber) errors.whatsappNumber = "WhatsApp phone number is required"
       if (!formData.ghanaCardFront) errors.ghanaCardFront = "Front of Ghana Card is required"
       if (!formData.ghanaCardBack) errors.ghanaCardBack = "Back of Ghana Card is required"
 
@@ -147,7 +150,6 @@ export default function NannyApplicationPage() {
   const handleSubmit = async () => {
     const errors: Record<string, string> = {}
 
-    // Validate consent
     if (!formData.consentBackgroundCheck) {
       errors.consentBackgroundCheck = "Background check consent is required"
     }
@@ -168,23 +170,23 @@ export default function NannyApplicationPage() {
     setError(null)
 
     try {
-      // Prepare form data for submission, including files
       const formDataToSend = new FormData()
       Object.entries(formData).forEach(([key, value]) => {
         if (value instanceof File) {
           formDataToSend.append(key, value)
         } else if (Array.isArray(value)) {
-          // Assuming arrays are strings that need to be stringified
           formDataToSend.append(key, JSON.stringify(value))
+        } else if (typeof value === "boolean") {
+          formDataToSend.append(key, value.toString())
         } else if (value !== null && value !== undefined) {
-          formDataToSend.append(key, String(value))
+          formDataToSend.append(key, value.toString())
         }
       })
       formDataToSend.append("formType", "Nanny")
 
       const response = await fetch("/api/applications", {
         method: "POST",
-        body: formDataToSend, // Send as FormData to handle files
+        body: formDataToSend,
       })
 
       if (!response.ok) {
@@ -207,7 +209,6 @@ export default function NannyApplicationPage() {
     } else {
       setFormData({ ...formData, [field]: [...currentValues, value] })
     }
-    // Clear specific field error if it exists
     if (fieldErrors[field]) {
       const newErrors = { ...fieldErrors }
       delete newErrors[field]
@@ -217,58 +218,52 @@ export default function NannyApplicationPage() {
 
   const renderStep1 = () => (
     <div className="space-y-6">
-      <div>
-        <label htmlFor="workType" className="block text-sm font-medium text-gray-700 mb-2">
-          Work Type <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="workType"
-          value={formData.workType}
-          onChange={(e) => {
-            setFormData({ ...formData, workType: e.target.value })
-            if (fieldErrors.workType) {
-              const newErrors = { ...fieldErrors }
-              delete newErrors.workType
-              setFieldErrors(newErrors)
-            }
+      <div className="space-y-2">
+        <Label htmlFor="preferredWorkArrangement" className="text-base">
+          Preferred Work Arrangement <span className="text-red-500">*</span>
+        </Label>
+        <Select
+          value={formData.preferredWorkArrangement}
+          onValueChange={(value) => {
+            setFormData({ ...formData, preferredWorkArrangement: value })
+            if (fieldErrors.preferredWorkArrangement)
+              setFieldErrors((prev) => ({ ...prev, preferredWorkArrangement: "" }))
           }}
-          className={`w-full px-4 py-3 border rounded-md focus:ring-2 focus:ring-[#c8a951] focus:border-transparent ${
-            fieldErrors.workType ? "border-red-500" : "border-gray-300"
-          }`}
         >
-          <option value="">Select work type</option>
-          <option value="Live-in">Live-in</option>
-          <option value="Live-out">Live-out</option>
-          <option value="Both">Both (Flexible)</option>
-        </select>
-        {fieldErrors.workType && <p className="mt-1 text-sm text-red-600">{fieldErrors.workType}</p>}
+          <SelectTrigger className={`min-h-[44px] ${fieldErrors.preferredWorkArrangement ? "border-red-500" : ""}`}>
+            <SelectValue placeholder="Select work arrangement" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="live_in">Live-In</SelectItem>
+            <SelectItem value="live_out">Live-Out</SelectItem>
+          </SelectContent>
+        </Select>
+        {fieldErrors.preferredWorkArrangement && (
+          <p className="mt-1 text-sm text-red-600">{fieldErrors.preferredWorkArrangement}</p>
+        )}
       </div>
 
-      <div>
-        <label htmlFor="availability" className="block text-sm font-medium text-gray-700 mb-2">
-          Availability <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="availability"
+      <div className="space-y-2 md:space-y-2">
+        <Label htmlFor="availability" className="text-base">
+          When Can You Start? <span className="text-red-500">*</span>
+        </Label>
+        <Select
           value={formData.availability}
-          onChange={(e) => {
-            setFormData({ ...formData, availability: e.target.value })
-            if (fieldErrors.availability) {
-              const newErrors = { ...fieldErrors }
-              delete newErrors.availability
-              setFieldErrors(newErrors)
-            }
+          onValueChange={(value) => {
+            setFormData({ ...formData, availability: value })
+            if (fieldErrors.availability) setFieldErrors((prev) => ({ ...prev, availability: "" }))
           }}
-          className={`w-full px-4 py-3 border rounded-md focus:ring-2 focus:ring-[#c8a951] focus:border-transparent ${
-            fieldErrors.availability ? "border-red-500" : "border-gray-300"
-          }`}
         >
-          <option value="">Select availability</option>
-          <option value="Immediately">Immediately</option>
-          <option value="Within 2 weeks">Within 2 weeks</option>
-          <option value="Within 1 month">Within 1 month</option>
-          <option value="More than 1 month">More than 1 month</option>
-        </select>
+          <SelectTrigger className={`min-h-[44px] ${fieldErrors.availability ? "border-red-500" : ""}`}>
+            <SelectValue placeholder="Select your availability" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Immediately">Immediately</SelectItem>
+            <SelectItem value="Within 2 weeks">Within 2 weeks</SelectItem>
+            <SelectItem value="Within 1 month">Within 1 month</SelectItem>
+            <SelectItem value="More than 1 month">More than 1 month</SelectItem>
+          </SelectContent>
+        </Select>
         {fieldErrors.availability && <p className="mt-1 text-sm text-red-600">{fieldErrors.availability}</p>}
       </div>
     </div>
@@ -293,22 +288,22 @@ export default function NannyApplicationPage() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="whatsappPhone" className="text-base">
+        <Label htmlFor="whatsappNumber" className="text-base">
           WhatsApp Phone Number <span className="text-red-500">*</span>
         </Label>
         <Input
-          id="whatsappPhone"
+          id="whatsappNumber"
           type="tel"
           inputMode="tel"
           placeholder="+233 XX XXX XXXX"
-          value={formData.whatsappPhone}
+          value={formData.whatsappNumber}
           onChange={(e) => {
-            setFormData({ ...formData, whatsappPhone: e.target.value })
-            if (fieldErrors.whatsappPhone) setFieldErrors((prev) => ({ ...prev, whatsappPhone: "" }))
+            setFormData({ ...formData, whatsappNumber: e.target.value })
+            if (fieldErrors.whatsappNumber) setFieldErrors((prev) => ({ ...prev, whatsappNumber: "" }))
           }}
-          className={fieldErrors.whatsappPhone ? "border-red-500 focus-visible:ring-red-500" : ""}
+          className={fieldErrors.whatsappNumber ? "border-red-500 focus-visible:ring-red-500" : ""}
         />
-        {fieldErrors.whatsappPhone && <p className="mt-1 text-sm text-red-600">{fieldErrors.whatsappPhone}</p>}
+        {fieldErrors.whatsappNumber && <p className="mt-1 text-sm text-red-600">{fieldErrors.whatsappNumber}</p>}
       </div>
 
       <div className="space-y-2">
@@ -728,50 +723,46 @@ export default function NannyApplicationPage() {
 
   const renderStep5 = () => (
     <div className="space-y-6">
-      {/* Review Summary */}
       <div className="space-y-4">
         <h3 className="font-semibold text-base md:text-lg text-navy">Review Your Application</h3>
         <div className="grid grid-cols-1 gap-3 text-sm md:text-base bg-soft-grey p-4 md:p-6 rounded-lg">
-          <div className="space-y-1">
-            <div className="font-medium text-charcoal text-xs uppercase tracking-wide">Role</div>
-            <div>{formData.role}</div>
+          <div className="flex items-start justify-between py-3 border-b">
+            <span className="text-muted-foreground">Preferred Work Arrangement:</span>
+            <span className="font-medium text-right capitalize">
+              {formData.preferredWorkArrangement.replace("_", " ")}
+            </span>
           </div>
-
-          <div className="space-y-1">
-            <div className="font-medium text-charcoal text-xs uppercase tracking-wide">Full Name</div>
-            <div>{formData.fullName}</div>
+          <div className="flex items-start justify-between py-3 border-b">
+            <span className="text-muted-foreground">Availability:</span>
+            <span className="font-medium text-right capitalize">{formData.availability.replace("_", " ")}</span>
           </div>
-
-          <div className="space-y-1">
-            <div className="font-medium text-charcoal text-xs uppercase tracking-wide">Phone</div>
-            <div className="break-all">{formData.whatsappPhone}</div>
+          <div className="flex items-start justify-between py-3 border-b">
+            <span className="text-muted-foreground">Full Name:</span>
+            <span className="font-medium text-right">{formData.fullName}</span>
           </div>
-
-          <div className="space-y-1">
-            <div className="font-medium text-charcoal text-xs uppercase tracking-wide">Age</div>
-            <div>{formData.age}</div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="font-medium text-charcoal text-xs uppercase tracking-wide">Work Type</div>
-            <div>{formData.workType}</div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="font-medium text-charcoal text-xs uppercase tracking-wide">Location</div>
-            <div>
-              {formData.preferredLocation === "Other" ? formData.preferredLocationOther : formData.preferredLocation}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="font-medium text-charcoal text-xs uppercase tracking-wide">Experience</div>
-            <div>{formData.yearsExperience} years</div>
+          <div className="flex items-start justify-between py-3 border-b">
+            <span className="text-muted-foreground">Phone:</span>
+            <span className="font-medium text-right break-all">{formData.whatsappNumber}</span>
           </div>
         </div>
       </div>
 
-      {/* Consent Checkboxes */}
+      <div className="space-y-4">
+        <h4 className="font-semibold mb-4 text-navy">Personal Information</h4>
+        <div className="grid grid-cols-1 gap-3 text-sm md:text-base bg-soft-grey p-4 md:p-6 rounded-lg">
+          <div className="flex items-start justify-between py-3 border-b">
+            <span className="text-muted-foreground">Preferred Work Arrangement:</span>
+            <span className="font-medium text-right capitalize">
+              {formData.preferredWorkArrangement.replace("_", " ")}
+            </span>
+          </div>
+          <div className="flex items-start justify-between py-3 border-b">
+            <span className="text-muted-foreground">Availability:</span>
+            <span className="font-medium text-right capitalize">{formData.availability.replace("_", " ")}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-4">
         <h3 className="font-semibold text-base md:text-lg text-navy">Consent & Acknowledgement</h3>
         <div className="space-y-4 bg-navy/5 border border-navy/10 rounded p-4">

@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 
 export default function GeneralApplicationPage() {
   const router = useRouter()
@@ -21,7 +22,6 @@ export default function GeneralApplicationPage() {
     // Personal Information
     fullName: "",
     dateOfBirth: "",
-    gender: "",
     phoneNumber: "",
     alternatePhone: "",
     email: "",
@@ -48,7 +48,7 @@ export default function GeneralApplicationPage() {
     // Preferences & Availability
     preferredWorkArrangement: "",
     willingToTravel: "",
-    startDate: "",
+    availability: "",
     expectedSalary: "",
 
     // References
@@ -69,6 +69,7 @@ export default function GeneralApplicationPage() {
     hasHealthCertificate: false,
     hasPoliceReport: false,
   })
+  const [isLoading, setIsLoading] = useState(false)
 
   const skillOptions = [
     "Cleaning",
@@ -109,7 +110,6 @@ export default function GeneralApplicationPage() {
         return !!(
           formData.fullName &&
           formData.dateOfBirth &&
-          formData.gender &&
           formData.phoneNumber &&
           formData.currentAddress &&
           formData.city &&
@@ -123,7 +123,7 @@ export default function GeneralApplicationPage() {
         return !!(
           formData.preferredWorkArrangement &&
           formData.willingToTravel &&
-          formData.startDate &&
+          formData.availability &&
           formData.expectedSalary
         )
       case 5:
@@ -146,11 +146,37 @@ export default function GeneralApplicationPage() {
   }
 
   const handleSubmit = async () => {
-    console.log("[v0] Submitting General application:", formData)
-    // Here you would typically send the data to an API endpoint
-    // For now, we'll just redirect to a success page
-    alert("Application submitted successfully! We will contact you soon.")
-    router.push("/apply")
+    setIsLoading(true)
+
+    try {
+      const formDataToSend = new FormData()
+      Object.entries(formData).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          formDataToSend.append(key, JSON.stringify(value))
+        } else if (value !== null && value !== undefined) {
+          formDataToSend.append(key, String(value))
+        }
+      })
+      formDataToSend.append("formType", "General")
+
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        body: formDataToSend,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to submit application")
+      }
+
+      alert("Application submitted successfully! We will contact you soon.")
+      router.push("/apply")
+    } catch (err) {
+      console.error("[v0] Error submitting:", err)
+      alert(err instanceof Error ? err.message : "Failed to submit application")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -245,32 +271,6 @@ export default function GeneralApplicationPage() {
                         className="h-11"
                       />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-base">Gender *</Label>
-                    <RadioGroup value={formData.gender} onValueChange={(value) => updateFormData("gender", value)}>
-                      <div className="flex flex-wrap gap-4">
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="male" id="male" />
-                          <Label htmlFor="male" className="font-normal cursor-pointer">
-                            Male
-                          </Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="female" id="female" />
-                          <Label htmlFor="female" className="font-normal cursor-pointer">
-                            Female
-                          </Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="other" id="other" />
-                          <Label htmlFor="other" className="font-normal cursor-pointer">
-                            Other
-                          </Label>
-                        </div>
-                      </div>
-                    </RadioGroup>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -602,16 +602,23 @@ export default function GeneralApplicationPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 md:space-y-2">
-                      <Label htmlFor="startDate" className="text-base">
-                        Available Start Date *
+                      <Label htmlFor="availability" className="text-base">
+                        When Can You Start? *
                       </Label>
-                      <Input
-                        id="startDate"
-                        type="date"
-                        value={formData.startDate}
-                        onChange={(e) => updateFormData("startDate", e.target.value)}
-                        className="h-11"
-                      />
+                      <Select
+                        value={formData.availability}
+                        onValueChange={(value) => updateFormData("availability", value)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Select availability" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Immediately">Immediately</SelectItem>
+                          <SelectItem value="Within 2 weeks">Within 2 weeks</SelectItem>
+                          <SelectItem value="Within 1 month">Within 1 month</SelectItem>
+                          <SelectItem value="More than 1 month">More than 1 month</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2 md:space-y-2">
                       <Label htmlFor="expectedSalary" className="text-base">
@@ -814,9 +821,6 @@ export default function GeneralApplicationPage() {
                         <span className="font-medium">Date of Birth:</span> {formData.dateOfBirth}
                       </p>
                       <p>
-                        <span className="font-medium">Gender:</span> {formData.gender}
-                      </p>
-                      <p>
                         <span className="font-medium">Phone:</span> {formData.phoneNumber}
                       </p>
                       <p>
@@ -875,7 +879,7 @@ export default function GeneralApplicationPage() {
                         <span className="font-medium">Willing to Travel:</span> {formData.willingToTravel}
                       </p>
                       <p>
-                        <span className="font-medium">Start Date:</span> {formData.startDate}
+                        <span className="font-medium">Availability:</span> {formData.availability}
                       </p>
                       <p>
                         <span className="font-medium">Expected Salary:</span> GHS {formData.expectedSalary}
@@ -936,8 +940,9 @@ export default function GeneralApplicationPage() {
                     type="button"
                     onClick={handleSubmit}
                     className="w-full sm:w-auto order-1 sm:order-2 sm:ml-auto h-11"
+                    disabled={isLoading}
                   >
-                    Submit Application
+                    {isLoading ? "Submitting..." : "Submit Application"}
                   </Button>
                 )}
               </div>
